@@ -1,0 +1,24 @@
+{
+  "accessories": [{
+    "id": "1",
+    "room": "Main Bedroom",
+    "fan": {
+      "speeds": "3",
+      "signals": [
+        "**** OFF SIGNAL ****",
+        "**** SPEED 1 SIGNAL ****",
+        "**** SPEED 2 SIGNAL ****",
+        "**** SPEED 3 SIGNAL ****"
+      ]
+    },
+    "light": {
+      "type": "toggle",
+      "signals": [
+        "**** LIGHT TOGGLE SIGNAL ****"
+      ]
+    }
+  }],
+  "settings": {
+    "port": 5020
+  }
+}
