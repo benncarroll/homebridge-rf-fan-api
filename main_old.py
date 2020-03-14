@@ -2,7 +2,7 @@ import json
 import requests
 import logging
 import os
-from classes import *
+from classes_old import *
 from pilight import establishConnection
 from pprint import pprint
 
