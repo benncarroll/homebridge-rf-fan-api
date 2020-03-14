@@ -22,7 +22,7 @@ logger.info('Pilight connection established.')
 
 
 app = Flask(__name__)
-config_file_path = os.path.dirname(__file__) + "/config.json"
+config_file_path = os.path.join(os.path.dirname(__file__), "config.json")
 
 devices = {}
 
