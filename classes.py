@@ -4,9 +4,9 @@ import pilight
 class Light(object):
     """docstring for Light."""
 
-    def __init__(self, type, signal_arr):
+    def __init__(self, signal_type, signal_arr):
         super(Light, self).__init__()
-        self._type = type
+        self._type = signal_type
         self._signal_arr = signal_arr
         self._current_state = 0
 
@@ -14,8 +14,6 @@ class Light(object):
         return self._current_state
 
     def setState(self, state):
-        if not self.verifyState(state):
-            return False
         state = int(state)
 
         if self._type == 'toggle':
@@ -29,14 +27,6 @@ class Light(object):
         self._current_state = state
         return True
 
-    def verifyState(self, state):
-        try:
-            if str(int(state)) in '01':
-                return True
-        except:
-            pass
-        return False
-
 
 class Fan(object):
     """docstring for Fan."""
@@ -45,6 +35,7 @@ class Fan(object):
         super(Fan, self).__init__()
         self._signal_arr = accessory['fan']['signals']
         self._current_speed = 0
+        self._current_power = 0
         self._num_speed = len(self._signal_arr) - 1
         self.light = None
         self.name = accessory['room']
@@ -55,31 +46,36 @@ class Fan(object):
                 accessory['light']['signals']
             )
 
-    def getState(self):
+    def getSpeed(self):
         return self._current_speed
 
-    def setState(self, state):
-        if not self.verifyState(state):
-            return False
-        state = int(state)
+    def setSpeed(self, speed):
+        if speed > self._num_speed:
+            speed = 100 / self._num_speed
+        self._current_speed = int(speed)
+        return
 
-        pilight.sendCode(self._signal_arr[state])
-        return True
+    def getOn(self):
+        return self._current_power
 
-    def hasLight(self):
-        if self.light != None:
-            return True
+    def setOn(self, power):
+        self._current_power = int(power)
+        return
+
+    def setState(self, sync):
+
+        speed = sync["fan-speed"]
+        power = sync["fan-on"]
+        light = sync["light-on"]
+
+        self.light.setState(light)
+
+        self.setSpeed(speed)
+        self.setOn(power)
+
+        if self.getOn():
+            pilight.sendCode(self._signal_arr[self.getSpeed()])
         else:
-            return False
+            pilight.sendCode(self._signal_arr[0])
 
-    def verifyState(self, state):
-        vstr = ''
-        for i in range(self._num_speed + 1):
-            vstr += str(i)
-            pass
-        try:
-            if str(int(state)) in vstr:
-                return True
-        except:
-            pass
-        return False
+        return True

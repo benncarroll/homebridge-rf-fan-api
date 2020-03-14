@@ -16,9 +16,18 @@ async def processSignals():
 
     processing = True
 
+def waitForActive():
+    stat = system("sudo service pilight status")
+    print(stat)
+    if stat:
+        sleep(2)
+        waitForActive()
+    return
+
 def establishConnection(count=0):
     if platform == 'darwin':
         return True
+    waitForActive()
     count += 1
     output = run(
         ["pilight-send", "-p", "raw", "-c", "'100 100'"],

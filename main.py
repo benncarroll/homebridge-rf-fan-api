@@ -1,6 +1,8 @@
+from flask import Flask, request, jsonify
 import json
 import requests
 import logging
+import traceback
 import os
 from classes import *
 from pilight import establishConnection
@@ -19,8 +21,6 @@ establishConnection()
 logger.info('Pilight connection established.')
 
 
-from flask import Flask, request, jsonify
-
 app = Flask(__name__)
 config_file_path = os.path.dirname(__file__) + "/config.json"
 
@@ -36,89 +36,83 @@ def createDevices():
     for accessory in config['accessories']:
         devices[accessory['id']] = Fan(accessory)
         pass
-    logger.debug(', '.join([(str(i) + ": " + devices[i].name) for i in devices]))
+    logger.debug(
+        ', '.join([(str(i) + ": " + devices[i].name) for i in devices]))
     pprint(devices)
     pass
 
 
-def dict_merge(x, y):
-    z = x.copy()   # start with x's keys and values
-    z.update(y)    # modifies z with y's keys and values & returns None
-    return z
+def error(msg):
+    return {'success': False, 'message': msg}
 
 
-@app.route("/api/status", methods=["GET"])
-def status():
-    data = request.get_json()  # request.args
-    response = {'success': True}
+def getSyncPack(device_id):
+    return {
+        "light-on": int(devices[device_id].light.getState()),
+        "fan-on": int(devices[device_id].getOn()),
+        "fan-speed": int(devices[device_id].getSpeed())
+    }
 
-    def error(msg):
-        return {'success': False, 'message': msg}
 
-    id = str(data.get('id', -1))
+def getName(device_id):
+    return devices[device_id].name
+
+
+@app.route("/apiv2/status", methods=["GET"])
+def statusComplete():
+    data = request.get_json()
+    device_id = str(data.get('id', -1))
+    response = {'success': True, 'id': device_id}
+    status_code = 200
 
     # Check if we have device with supplied ID
-    if id in devices:
-        # Check if asking for light
-        if int(data.get('light', False)):
-            # Check if the device has a light
-            if devices.get(id).hasLight():
-                response['on'] = int(devices[id].light.getState())
-            else:
-                response = error('Device ID {} does not have a light.'.format(id))
-
-        else:
-            response['speed'] = int(devices[id].getState())
+    if device_id in devices:
+        try:
+            response['sync'] = getSyncPack(device_id)
+        except Exception as e:
+            response = error("Error in getting status of " +
+                             getName(device_id))
+            status_code = 500
+            logger.error(traceback.format_exc())
     else:
-        response = error('Device ID of {} not found.'.format(id))
+        response = error(
+            "Device ID '{}' not found.".format(device_id))
+        status_code = 400
 
     # Log to console
     logger.debug('Received request: ' + str(data))
     logger.debug('Device:{}, Mode:{}, Response:{}'.format(
-        data.get('id', 'null'),
+        getName(device_id),
         'Light' if int(data.get('light', False)) else 'Fan',
         json.dumps(response)
     ))
 
-    return json.dumps(response)
+    return json.dumps(response), status_code
 
 
-@app.route("/api/update", methods=["GET", "POST"])
+@app.route("/apiv2/update", methods=["GET", "POST"])
 def update():
-    data = request.get_json()  # dict_merge(request.args, request.form) #{**request.args, **request.form}
-    response = {'success': True}
-    output = ''
-    id = str(data.get('id', -1))
+    data = request.get_json()
+    device_id = str(data.get('id', -1))
+    sync = dict(data.get('sync'))
+    response = {'success': True, 'id': device_id}
+    status_code = 200
 
-    def error(msg):
-        return {'success': False, 'message': msg}
+    if device_id in devices:
+        try:
+            devices[device_id].setState(sync)
+        except Exception as e:
+            response = error("Error in setting status of " +
+                             getName(device_id))
+            status_code = 500
+            logger.error(traceback.format_exc())
 
-    # Check if we have device with supplied ID
-    if id in devices and data.get('state') != None:
-        # Check if asking for light
-        if int(data.get('light', False)):
-            # Check if the device has a light
-            if devices.get(id).hasLight():
-                if not devices[id].light.setState(data.get('state')):
-                    response = error('Invalid state value provided.')
-            else:
-                response = error('Device ID {} does not have a light.'.format(data['id']))
-
-        else:
-            if not devices[id].setState(data.get('state')):
-                response = error('Invalid state value provided.')
+        response['sync'] = getSyncPack(device_id)
     else:
-        response = error('Device ID of {} not found or state not provided.'.format(id))
+        response = error("Device ID '{}' not found.".format(device_id))
+        status_code = 400
 
-    # Log to console
-    logger.debug('Received request: ' + str(data))
-    logger.debug('Device:{}, Mode:{}, Response:{}'.format(
-        data.get('id', 'null'),
-        'Light' if int(data.get('light', False)) else 'Fan',
-        json.dumps(response)
-    ))
-
-    return json.dumps(response)
+    return json.dumps(response), status_code
 
 
 if __name__ == "__main__":
