@@ -50,7 +50,7 @@ def getSyncPack(device_id):
     return {
         "light-on": int(devices[device_id].light.getState()),
         "fan-on": int(devices[device_id].getOn()),
-        "fan-speed": int(devices[device_id].getSpeed())
+        "fan-speed": int(devices[device_id].getSpeed(True))
     }
 
 

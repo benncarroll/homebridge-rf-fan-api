@@ -46,12 +46,17 @@ class Fan(object):
                 accessory['light']['signals']
             )
 
-    def getSpeed(self):
-        return self._current_speed
+    def getSpeed(self, percent=False):
+        speed = self._current_speed
+        if percent:
+            rough = (100 / self._num_speed) * self._current_speed
+            speed = min([0, 25, 33, 50, 66, 75, 100],
+                        key=lambda x: abs(x-rough))
+        return speed
 
     def setSpeed(self, speed):
         if speed > self._num_speed:
-            speed = 100 / self._num_speed
+            speed = round(speed / (100 / self._num_speed))
         self._current_speed = int(speed)
         return
 

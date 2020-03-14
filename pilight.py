@@ -1,47 +1,18 @@
 from os import system
 from subprocess import run, PIPE
-from sys import exit, platform
+from sys import platform
 import logging
 from time import sleep
-import asyncio
-
-signal_queue = []
-processing = False
-
-async def processSignals():
-    if processing:
-        return
-    processing = True
 
 
-    processing = True
-
-def waitForActive():
-    stat = system("sudo service pilight status")
-    print(stat)
-    if stat:
-        sleep(2)
-        waitForActive()
-    return
-
-def establishConnection(count=0):
+def establishConnection():
     if platform == 'darwin':
         return True
-    waitForActive()
-    count += 1
-    output = run(
-        ["pilight-send", "-p", "raw", "-c", "'100 100'"],
-        stderr=PIPE, stdout=PIPE
-    )
-    if 'no pilight ssdp' in output.stderr.decode('utf-8'):
-        system('sudo service pilight stop')
-        system('sudo service pilight start')
-        if count > 10:
-            print('Aborting. Could not launch pilight.')
-            exit()
-        establishConnection(count)
-    else:
-        return True
+    stat = system("sudo service pilight status >/dev/null 2>&1")
+    if stat:
+        sleep(2)
+        establishConnection()
+    return True
 
 
 def sendCode(signal):
